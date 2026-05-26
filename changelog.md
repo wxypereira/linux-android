@@ -25,3 +25,10 @@ Todas as alterações feitas no repositório serão encontradas nesse arquivo.
 **Adicionado**
 * `contribuing.md` criado
 * `code-of-conduct.md` criado
+
+## v1.4
+* **Adicionado**
+* `scripts/` local dos scripts
+* `script-main.sh` script centralizado que auxilia na instalação
+* `script-installation.sh` script de configuração do Termux
+* `script-termux` script de instalação do ambiente Linux
