@@ -1,0 +1,7 @@
+# Artefatos locais de planejamento e revisão
+tickets.md
+code-review-report.html
+
+# Artefatos gerados por ferramentas locais
+__pycache__/
+*.pyc

@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shell-and-contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Histórico completo: `git diff --check` precisa do commit base e
+          # do pai do commit enviado, que não existem em um clone raso.
+          fetch-depth: 0
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+
+      - name: Check Bash syntax
+        run: |
+          bash -n script-installation.sh
+          bash -n script-termux.sh
+          bash -n tests/run.sh
+          python3 -m py_compile tests/check_markdown_links.py
+
+      - name: Run ShellCheck
+        run: |
+          shellcheck -x -S warning script-installation.sh script-termux.sh tests/run.sh
+
+      - name: Run contract tests
+        run: bash tests/run.sh
+
+      - name: Validate Markdown links
+        run: python3 tests/check_markdown_links.py
+
+      - name: Validate patch whitespace
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -Eeuo pipefail
+          # `git diff --check` sem argumentos inspeciona apenas a work tree,
+          # que em um checkout limpo passa mesmo com erros nos commits enviados.
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            git diff --check "${BASE_SHA}" "${GITHUB_SHA}"
+          elif [ -n "${BEFORE_SHA}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+            git diff --check "${BEFORE_SHA}" "${GITHUB_SHA}"
+          elif git rev-parse --verify --quiet "${GITHUB_SHA}^" >/dev/null; then
+            git diff --check "${GITHUB_SHA}^" "${GITHUB_SHA}"
+          else
+            git diff-tree --check --root "${GITHUB_SHA}"
+          fi
